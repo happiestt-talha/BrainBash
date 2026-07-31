@@ -1,0 +1,24 @@
+// MUST mirror quiz-frontend/src/lib/constants.ts exactly — this is the single
+// biggest source of silent bugs in a websocket app if the two drift apart.
+export enum MatchEvents {
+  ROOM_JOIN = 'room:join',
+  ROOM_PLAYER_JOINED = 'room:player-joined',
+  ROOM_PLAYER_LEFT = 'room:player-left',
+  ROOM_ASSIGN_TEAM = 'room:assign-team',
+  ROOM_TEAM_ASSIGNED = 'room:team-assigned',
+  ROOM_START_MATCH = 'room:start-match',
+
+  MATCH_STARTED = 'match:started',
+  QUESTION_PUSH = 'question:push',
+  ANSWER_SUBMIT = 'answer:submit',
+  ANSWER_ACK = 'answer:ack',
+  QUESTION_PLAYER_ANSWERED = 'question:player-answered',
+  QUESTION_REVEAL = 'question:reveal',
+  SCOREBOARD_UPDATE = 'scoreboard:update',
+  MATCH_NEXT_QUESTION = 'match:next-question',
+  MATCH_ENDED = 'match:ended',
+
+  PLAYER_DISCONNECTED = 'player:disconnected',
+  PLAYER_RECONNECTED = 'player:reconnected',
+  MATCH_STATE_SYNC = 'match:state-sync',
+}
