@@ -11,6 +11,8 @@ import { ScoringModule } from './scoring/scoring.module';
 import { QuestionsModule } from './questions/questions.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -31,5 +33,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
     QuestionsModule,
     LeaderboardModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
