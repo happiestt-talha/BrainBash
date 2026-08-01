@@ -8,10 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QuestionsModule = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const question_entity_1 = require("./entities/question.entity");
+const category_entity_1 = require("./entities/category.entity");
+const questions_service_1 = require("./questions.service");
+const questions_controller_1 = require("./questions.controller");
+const llm_question_generator_service_1 = require("./llm-question-generator.service");
 let QuestionsModule = class QuestionsModule {
 };
 exports.QuestionsModule = QuestionsModule;
 exports.QuestionsModule = QuestionsModule = __decorate([
-    (0, common_1.Module)({})
+    (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([question_entity_1.Question, category_entity_1.Category])],
+        providers: [questions_service_1.QuestionsService, llm_question_generator_service_1.LlmQuestionGeneratorService],
+        controllers: [questions_controller_1.QuestionsController],
+        exports: [questions_service_1.QuestionsService],
+    })
 ], QuestionsModule);
 //# sourceMappingURL=questions.module.js.map

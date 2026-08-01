@@ -7,6 +7,22 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MatchModule = void 0;
+Now;
+update;
+MatchModule;
+to;
+wire in all;
+the;
+repositories;
+match.service.ts;
+actually;
+needs;
+this;
+replaces;
+the;
+earlier;
+version: quiz - backend / src / match / match.module.ts;
+typescript;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const match_gateway_1 = require("./match.gateway");
@@ -25,8 +41,8 @@ exports.MatchModule = MatchModule;
 exports.MatchModule = MatchModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            scoring_module_1.ScoringModule,
             typeorm_1.TypeOrmModule.forFeature([match_entity_1.Match, match_participant_entity_1.MatchParticipant, match_question_entity_1.MatchQuestion, match_answer_entity_1.MatchAnswer, room_entity_1.Room, question_entity_1.Question]),
+            scoring_module_1.ScoringModule,
         ],
         providers: [match_gateway_1.MatchGateway, match_service_1.MatchService, match_state_store_1.MatchStateStore],
     })

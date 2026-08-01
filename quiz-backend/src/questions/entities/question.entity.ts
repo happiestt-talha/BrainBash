@@ -1,4 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+
+export type Difficulty = 'easy' | 'medium' | 'hard';
+export type QuestionSource = 'curated' | 'llm_generated';
 
 @Entity('questions')
 export class Question {
@@ -8,21 +11,30 @@ export class Question {
   @Column()
   categoryId: string;
 
-  @Column({ default: false })
-  validated: boolean;
-
   @Column('text')
   text: string;
 
   @Column('jsonb')
   options: string[];
 
-  @Column('int')
+  @Column()
   correctOptionIndex: number;
+
+  @Column({ type: 'varchar' })
+  difficulty: Difficulty;
+
+  @Column({ type: 'varchar' })
+  source: QuestionSource;
+
+  @Column('text', { nullable: true })
+  generatedPrompt: string;
+
+  @Column({ default: false })
+  validated: boolean;
+
+  @Column({ default: 0 })
+  timesUsed: number;
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

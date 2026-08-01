@@ -14,12 +14,15 @@ const typeorm_1 = require("typeorm");
 let Question = class Question {
     id;
     categoryId;
-    validated;
     text;
     options;
     correctOptionIndex;
+    difficulty;
+    source;
+    generatedPrompt;
+    validated;
+    timesUsed;
     createdAt;
-    updatedAt;
 };
 exports.Question = Question;
 __decorate([
@@ -31,10 +34,6 @@ __decorate([
     __metadata("design:type", String)
 ], Question.prototype, "categoryId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ default: false }),
-    __metadata("design:type", Boolean)
-], Question.prototype, "validated", void 0);
-__decorate([
     (0, typeorm_1.Column)('text'),
     __metadata("design:type", String)
 ], Question.prototype, "text", void 0);
@@ -43,17 +42,33 @@ __decorate([
     __metadata("design:type", Array)
 ], Question.prototype, "options", void 0);
 __decorate([
-    (0, typeorm_1.Column)('int'),
+    (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], Question.prototype, "correctOptionIndex", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar' }),
+    __metadata("design:type", String)
+], Question.prototype, "difficulty", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar' }),
+    __metadata("design:type", String)
+], Question.prototype, "source", void 0);
+__decorate([
+    (0, typeorm_1.Column)('text', { nullable: true }),
+    __metadata("design:type", String)
+], Question.prototype, "generatedPrompt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Question.prototype, "validated", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Question.prototype, "timesUsed", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Question.prototype, "createdAt", void 0);
-__decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
-    __metadata("design:type", Date)
-], Question.prototype, "updatedAt", void 0);
 exports.Question = Question = __decorate([
     (0, typeorm_1.Entity)('questions')
 ], Question);
