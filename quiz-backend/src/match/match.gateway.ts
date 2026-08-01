@@ -51,6 +51,7 @@ export class MatchGateway implements OnGatewayDisconnect {
     setTimeout(async () => {
       const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
       this.server.to(data.roomCode).emit(MatchEvents.QUESTION_PUSH, firstQuestion);
+      this.scheduleReveal(matchStartedPayload.matchId, data.roomCode, firstQuestion.questionId!, firstQuestion.timeLimitMs!);
     }, 3000);
   }
 
@@ -64,25 +65,47 @@ export class MatchGateway implements OnGatewayDisconnect {
     client.emit(MatchEvents.ANSWER_ACK, { questionId: data.questionId, received: true });
     this.server.to(roomCode).emit(MatchEvents.QUESTION_PLAYER_ANSWERED, { playerId });
 
-    // if everyone in the match has answered, reveal immediately rather than waiting for timeout
     const allAnswered = await this.matchService.haveAllPlayersAnswered(data.matchId, data.questionId);
     if (allAnswered) {
-      await this.revealAndAdvance(data.matchId, roomCode);
+      await this.revealAndAdvance(data.matchId, roomCode, data.questionId);
     }
   }
 
-  private async revealAndAdvance(matchId: string, roomCode: string) {
+  private scheduleReveal(matchId: string, roomCode: string, questionId: string, timeLimitMs: number) {
+    setTimeout(async () => {
+      const state = await this.matchService.getMatchState(matchId);
+      // Only auto-reveal if this question is still the active one
+      if (state && state.currentQuestion && state.currentQuestion.questionId === questionId) {
+        await this.revealAndAdvance(matchId, roomCode, questionId);
+      }
+    }, timeLimitMs + 100);
+  }
+
+  private async revealAndAdvance(matchId: string, roomCode: string, questionId: string) {
+    // Prevent double-reveal if timeout and last answer happen simultaneously
+    const state = await this.matchService.getMatchState(matchId);
+    if (!state || !state.currentQuestion || state.currentQuestion.questionId !== questionId) {
+      return; 
+    }
+
+    // Penalize players who didn't answer before time ran out (-200 pts, streak reset)
+    await this.matchService.penalizeUnanswered(matchId);
+
     const reveal = await this.matchService.revealAnswers(matchId);
     this.server.to(roomCode).emit(MatchEvents.QUESTION_REVEAL, reveal);
     this.server.to(roomCode).emit(MatchEvents.SCOREBOARD_UPDATE, reveal.scores);
 
-    const next = await this.matchService.pushNextQuestion(matchId);
-    if (next.matchEnded) {
-      this.server.to(roomCode).emit(MatchEvents.MATCH_ENDED, next.finalResults);
-    } else {
-      this.server.to(roomCode).emit(MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
-      this.server.to(roomCode).emit(MatchEvents.QUESTION_PUSH, next);
-    }
+    // Give players 4 seconds to see the result and scoreboard before the next question
+    setTimeout(async () => {
+      const next = await this.matchService.pushNextQuestion(matchId);
+      if (next.matchEnded) {
+        this.server.to(roomCode).emit(MatchEvents.MATCH_ENDED, next.finalResults);
+      } else {
+        this.server.to(roomCode).emit(MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
+        this.server.to(roomCode).emit(MatchEvents.QUESTION_PUSH, next);
+        this.scheduleReveal(matchId, roomCode, next.questionId!, next.timeLimitMs!);
+      }
+    }, 4000);
   }
 
   @SubscribeMessage(MatchEvents.MATCH_STATE_SYNC)
@@ -109,6 +132,15 @@ export class MatchGateway implements OnGatewayDisconnect {
       team: p.team
     }));
     client.emit(MatchEvents.SCOREBOARD_UPDATE, scores);
+  }
+
+  @SubscribeMessage(MatchEvents.QUESTION_SKIP)
+  async handleSkip(
+    @MessageBody() data: { matchId: string; roomCode: string; questionId: string },
+  ) {
+    // Any player can request a skip — revealAndAdvance's questionId guard
+    // prevents double-advance if the server timer already fired.
+    await this.revealAndAdvance(data.matchId, data.roomCode, data.questionId);
   }
 
   handleDisconnect(client: Socket) {

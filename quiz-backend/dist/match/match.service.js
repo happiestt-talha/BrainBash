@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var MatchService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MatchService = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,6 +20,7 @@ const typeorm_2 = require("typeorm");
 const match_state_store_1 = require("./match-state.store");
 const scoring_service_1 = require("../scoring/scoring.service");
 const leaderboard_service_1 = require("../leaderboard/leaderboard.service");
+const questions_service_1 = require("../questions/questions.service");
 const match_entity_1 = require("./entities/match.entity");
 const match_participant_entity_1 = require("./entities/match-participant.entity");
 const match_question_entity_1 = require("./entities/match-question.entity");
@@ -27,20 +29,23 @@ const room_entity_1 = require("../rooms/entities/room.entity");
 const question_entity_1 = require("../questions/entities/question.entity");
 const DEFAULT_TIME_LIMIT_MS = 15000;
 const QUESTIONS_PER_MATCH = 10;
-let MatchService = class MatchService {
+let MatchService = MatchService_1 = class MatchService {
     stateStore;
     scoringService;
     leaderboardService;
+    questionsService;
     matchRepo;
     participantRepo;
     matchQuestionRepo;
     matchAnswerRepo;
     roomRepo;
     questionRepo;
-    constructor(stateStore, scoringService, leaderboardService, matchRepo, participantRepo, matchQuestionRepo, matchAnswerRepo, roomRepo, questionRepo) {
+    logger = new common_1.Logger(MatchService_1.name);
+    constructor(stateStore, scoringService, leaderboardService, questionsService, matchRepo, participantRepo, matchQuestionRepo, matchAnswerRepo, roomRepo, questionRepo) {
         this.stateStore = stateStore;
         this.scoringService = scoringService;
         this.leaderboardService = leaderboardService;
+        this.questionsService = questionsService;
         this.matchRepo = matchRepo;
         this.participantRepo = participantRepo;
         this.matchQuestionRepo = matchQuestionRepo;
@@ -92,10 +97,26 @@ let MatchService = class MatchService {
             totalQuestions: QUESTIONS_PER_MATCH,
             status: 'active',
         }));
-        const questionPool = await this.questionRepo.find({
+        let questionPool = await this.questionRepo.find({
             where: { categoryId: room.categoryId, validated: true },
             take: 50,
         });
+        if (questionPool.length < QUESTIONS_PER_MATCH) {
+            const needed = QUESTIONS_PER_MATCH - questionPool.length;
+            this.logger.log(`Only ${questionPool.length} questions in pool for category ${room.categoryId}. Generating ${needed + 5} more via Groq...`);
+            const difficulty = room.difficulty === 'mixed' ? 'medium' : room.difficulty;
+            try {
+                const generated = await this.questionsService.generateAndStore({
+                    categoryId: room.categoryId,
+                    count: needed + 5,
+                    difficulty,
+                });
+                questionPool = [...questionPool, ...generated];
+            }
+            catch (err) {
+                this.logger.error('Groq question generation failed', err);
+            }
+        }
         const shuffled = questionPool.sort(() => Math.random() - 0.5).slice(0, QUESTIONS_PER_MATCH);
         const matchQuestions = [];
         for (let i = 0; i < shuffled.length; i++) {
@@ -227,6 +248,36 @@ let MatchService = class MatchService {
             return false;
         return state.currentQuestion.answeredPlayerIds.length >= state.participants.length;
     }
+    async penalizeUnanswered(matchId) {
+        const state = await this.stateStore.get(matchId);
+        if (!state || !state.currentQuestion)
+            return;
+        const matchQuestions = await this.stateStore['redis'].getJson(`match:${matchId}:questions`);
+        const currentMq = matchQuestions?.find((mq) => mq.questionId === state.currentQuestion.questionId);
+        const penalty = this.scoringService.calculateTimeoutPenalty();
+        for (const p of state.participants) {
+            if (state.currentQuestion.answeredPlayerIds.includes(p.playerId))
+                continue;
+            const participant = await this.participantRepo.findOne({ where: { id: p.playerId } });
+            if (!participant)
+                continue;
+            await this.matchAnswerRepo.save(this.matchAnswerRepo.create({
+                matchParticipantId: participant.id,
+                matchQuestionId: currentMq?.id ?? '',
+                selectedOptionIndex: -1,
+                isCorrect: false,
+                elapsedMs: state.currentQuestion.timeLimitMs,
+                pointsEarned: penalty.pointsEarned,
+                streakAtTime: 0,
+            }));
+            participant.totalScore = Math.max(0, participant.totalScore + penalty.pointsEarned);
+            participant.currentStreak = 0;
+            await this.participantRepo.save(participant);
+            p.totalScore = participant.totalScore;
+            p.currentStreak = 0;
+        }
+        await this.stateStore.set(matchId, state);
+    }
     async revealAnswers(matchId) {
         const state = await this.stateStore.get(matchId);
         if (!state || !state.currentQuestion)
@@ -295,17 +346,18 @@ let MatchService = class MatchService {
     }
 };
 exports.MatchService = MatchService;
-exports.MatchService = MatchService = __decorate([
+exports.MatchService = MatchService = MatchService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(3, (0, typeorm_1.InjectRepository)(match_entity_1.Match)),
-    __param(4, (0, typeorm_1.InjectRepository)(match_participant_entity_1.MatchParticipant)),
-    __param(5, (0, typeorm_1.InjectRepository)(match_question_entity_1.MatchQuestion)),
-    __param(6, (0, typeorm_1.InjectRepository)(match_answer_entity_1.MatchAnswer)),
-    __param(7, (0, typeorm_1.InjectRepository)(room_entity_1.Room)),
-    __param(8, (0, typeorm_1.InjectRepository)(question_entity_1.Question)),
+    __param(4, (0, typeorm_1.InjectRepository)(match_entity_1.Match)),
+    __param(5, (0, typeorm_1.InjectRepository)(match_participant_entity_1.MatchParticipant)),
+    __param(6, (0, typeorm_1.InjectRepository)(match_question_entity_1.MatchQuestion)),
+    __param(7, (0, typeorm_1.InjectRepository)(match_answer_entity_1.MatchAnswer)),
+    __param(8, (0, typeorm_1.InjectRepository)(room_entity_1.Room)),
+    __param(9, (0, typeorm_1.InjectRepository)(question_entity_1.Question)),
     __metadata("design:paramtypes", [match_state_store_1.MatchStateStore,
         scoring_service_1.ScoringService,
         leaderboard_service_1.LeaderboardService,
+        questions_service_1.QuestionsService,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

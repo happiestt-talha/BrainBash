@@ -21,5 +21,6 @@ var MatchEvents;
     MatchEvents["PLAYER_DISCONNECTED"] = "player:disconnected";
     MatchEvents["PLAYER_RECONNECTED"] = "player:reconnected";
     MatchEvents["MATCH_STATE_SYNC"] = "match:state-sync";
+    MatchEvents["QUESTION_SKIP"] = "question:skip";
 })(MatchEvents || (exports.MatchEvents = MatchEvents = {}));
 //# sourceMappingURL=match-events.enum.js.map

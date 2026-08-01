@@ -5,6 +5,7 @@ import { MatchService } from './match.service';
 import { MatchStateStore } from './match-state.store';
 import { ScoringModule } from '../scoring/scoring.module';
 import { LeaderboardModule } from '../leaderboard/leaderboard.module';
+import { QuestionsModule } from '../questions/questions.module';
 import { Match } from './entities/match.entity';
 import { MatchParticipant } from './entities/match-participant.entity';
 import { MatchQuestion } from './entities/match-question.entity';
@@ -17,6 +18,7 @@ import { Question } from '../questions/entities/question.entity';
     TypeOrmModule.forFeature([Match, MatchParticipant, MatchQuestion, MatchAnswer, Room, Question]),
     ScoringModule,
     LeaderboardModule,
+    QuestionsModule,
   ],
   providers: [MatchGateway, MatchService, MatchStateStore],
 })

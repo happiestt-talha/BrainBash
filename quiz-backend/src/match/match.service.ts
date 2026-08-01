@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MatchStateStore } from './match-state.store';
 import { ScoringService } from '../scoring/scoring.service';
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
+import { QuestionsService } from '../questions/questions.service';
 import { Match } from './entities/match.entity';
 import { MatchParticipant } from './entities/match-participant.entity';
 import { MatchQuestion } from './entities/match-question.entity';
@@ -17,10 +18,13 @@ const QUESTIONS_PER_MATCH = 10;
 
 @Injectable()
 export class MatchService {
+  private readonly logger = new Logger(MatchService.name);
+
   constructor(
     private stateStore: MatchStateStore,
     private scoringService: ScoringService,
     private leaderboardService: LeaderboardService,
+    private questionsService: QuestionsService,
     @InjectRepository(Match) private matchRepo: Repository<Match>,
     @InjectRepository(MatchParticipant) private participantRepo: Repository<MatchParticipant>,
     @InjectRepository(MatchQuestion) private matchQuestionRepo: Repository<MatchQuestion>,
@@ -98,11 +102,33 @@ export class MatchService {
       }),
     );
 
-    // pull questions for the room's category, randomize order (per your Q11 answer)
-    const questionPool = await this.questionRepo.find({
+    // pull questions for the room's category, randomize order
+    let questionPool = await this.questionRepo.find({
       where: { categoryId: room.categoryId, validated: true },
       take: 50,
     });
+
+    // If the DB doesn't have enough questions for a full match,
+    // auto-generate them via Groq AI on the fly.
+    if (questionPool.length < QUESTIONS_PER_MATCH) {
+      const needed = QUESTIONS_PER_MATCH - questionPool.length;
+      this.logger.log(
+        `Only ${questionPool.length} questions in pool for category ${room.categoryId}. Generating ${needed + 5} more via Groq...`,
+      );
+      const difficulty = room.difficulty === 'mixed' ? 'medium' : room.difficulty;
+      try {
+        const generated = await this.questionsService.generateAndStore({
+          categoryId: room.categoryId,
+          count: needed + 5, // generate extras to build up the pool
+          difficulty,
+        });
+        questionPool = [...questionPool, ...generated];
+      } catch (err) {
+        this.logger.error('Groq question generation failed', err);
+        // proceed with whatever we have — better than crashing
+      }
+    }
+
     const shuffled = questionPool.sort(() => Math.random() - 0.5).slice(0, QUESTIONS_PER_MATCH);
 
     const matchQuestions: MatchQuestion[] = [];
@@ -281,6 +307,57 @@ export class MatchService {
     const state = await this.stateStore.get(matchId);
     if (!state || !state.currentQuestion) return false;
     return state.currentQuestion.answeredPlayerIds.length >= state.participants.length;
+  }
+
+  // ---- TIMEOUT PENALTY ----
+
+  /**
+   * Called when the question timer expires. Any participant who hasn't
+   * answered gets a -200 penalty and their streak is reset.
+   */
+  async penalizeUnanswered(matchId: string) {
+    const state = await this.stateStore.get(matchId);
+    if (!state || !state.currentQuestion) return;
+
+    const matchQuestions = await this.stateStore['redis'].getJson<MatchQuestion[]>(
+      `match:${matchId}:questions`,
+    );
+    const currentMq = matchQuestions?.find(
+      (mq) => mq.questionId === state.currentQuestion!.questionId,
+    );
+
+    const penalty = this.scoringService.calculateTimeoutPenalty();
+
+    for (const p of state.participants) {
+      if (state.currentQuestion.answeredPlayerIds.includes(p.playerId)) continue;
+
+      const participant = await this.participantRepo.findOne({ where: { id: p.playerId } });
+      if (!participant) continue;
+
+      // Record a "no answer" row so the history is complete
+      await this.matchAnswerRepo.save(
+        this.matchAnswerRepo.create({
+          matchParticipantId: participant.id,
+          matchQuestionId: currentMq?.id ?? '',
+          selectedOptionIndex: -1, // sentinel: no answer given
+          isCorrect: false,
+          elapsedMs: state.currentQuestion.timeLimitMs,
+          pointsEarned: penalty.pointsEarned,
+          streakAtTime: 0,
+        }),
+      );
+
+      // Update persistent participant row
+      participant.totalScore = Math.max(0, participant.totalScore + penalty.pointsEarned);
+      participant.currentStreak = 0;
+      await this.participantRepo.save(participant);
+
+      // Update live Redis state
+      p.totalScore = participant.totalScore;
+      p.currentStreak = 0;
+    }
+
+    await this.stateStore.set(matchId, state);
   }
 
   // ---- REVEAL ----

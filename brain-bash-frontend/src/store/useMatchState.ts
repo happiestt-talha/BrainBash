@@ -28,8 +28,16 @@ export function useMatchState() {
   } = useMatchStore();
 
   useEffect(() => {
-    if (params?.matchId) {
-      socket.emit(MatchEvents.MATCH_STATE_SYNC, { matchId: params.matchId });
+    const matchId = params?.matchId as string | undefined;
+
+    // Ensure matchId is always set in the store — it may have been lost
+    // during the Next.js page transition from lobby → match.
+    if (matchId && !useMatchStore.getState().matchId) {
+      useMatchStore.getState().setMatchId(matchId, '');
+    }
+
+    if (matchId) {
+      socket.emit(MatchEvents.MATCH_STATE_SYNC, { matchId });
     }
 
     function onQuestionPush(payload: QuestionPushPayload) {

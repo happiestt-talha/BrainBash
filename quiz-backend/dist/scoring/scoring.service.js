@@ -10,6 +10,7 @@ exports.ScoringService = void 0;
 const common_1 = require("@nestjs/common");
 let ScoringService = class ScoringService {
     BASE_POINTS = 1000;
+    TIMEOUT_PENALTY = -200;
     calculateScore(params) {
         if (!params.isCorrect) {
             return { pointsEarned: 0, newStreak: 0, streakBonus: 0 };
@@ -26,6 +27,13 @@ let ScoringService = class ScoringService {
         else if (newStreak >= 2)
             streakBonus = 50;
         return { pointsEarned: speedPoints + streakBonus, newStreak, streakBonus };
+    }
+    calculateTimeoutPenalty() {
+        return {
+            pointsEarned: this.TIMEOUT_PENALTY,
+            newStreak: 0,
+            streakBonus: 0,
+        };
     }
 };
 exports.ScoringService = ScoringService;

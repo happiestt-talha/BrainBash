@@ -5,10 +5,12 @@ export interface ScoreResult {
 }
 export declare class ScoringService {
     private readonly BASE_POINTS;
+    private readonly TIMEOUT_PENALTY;
     calculateScore(params: {
         isCorrect: boolean;
         elapsedMs: number;
         timeLimitMs: number;
         currentStreakBefore: number;
     }): ScoreResult;
+    calculateTimeoutPenalty(): ScoreResult;
 }

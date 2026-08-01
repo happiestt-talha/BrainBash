@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { MatchStateStore } from './match-state.store';
 import { ScoringService } from '../scoring/scoring.service';
 import { LeaderboardService } from '../leaderboard/leaderboard.service';
+import { QuestionsService } from '../questions/questions.service';
 import { Match } from './entities/match.entity';
 import { MatchParticipant } from './entities/match-participant.entity';
 import { MatchQuestion } from './entities/match-question.entity';
@@ -13,13 +14,15 @@ export declare class MatchService {
     private stateStore;
     private scoringService;
     private leaderboardService;
+    private questionsService;
     private matchRepo;
     private participantRepo;
     private matchQuestionRepo;
     private matchAnswerRepo;
     private roomRepo;
     private questionRepo;
-    constructor(stateStore: MatchStateStore, scoringService: ScoringService, leaderboardService: LeaderboardService, matchRepo: Repository<Match>, participantRepo: Repository<MatchParticipant>, matchQuestionRepo: Repository<MatchQuestion>, matchAnswerRepo: Repository<MatchAnswer>, roomRepo: Repository<Room>, questionRepo: Repository<Question>);
+    private readonly logger;
+    constructor(stateStore: MatchStateStore, scoringService: ScoringService, leaderboardService: LeaderboardService, questionsService: QuestionsService, matchRepo: Repository<Match>, participantRepo: Repository<MatchParticipant>, matchQuestionRepo: Repository<MatchQuestion>, matchAnswerRepo: Repository<MatchAnswer>, roomRepo: Repository<Room>, questionRepo: Repository<Question>);
     joinRoom(data: {
         roomCode: string;
         playerName: string;
@@ -73,6 +76,7 @@ export declare class MatchService {
         playerId: string;
     }>;
     haveAllPlayersAnswered(matchId: string, questionId: string): Promise<boolean>;
+    penalizeUnanswered(matchId: string): Promise<void>;
     revealAnswers(matchId: string): Promise<{
         questionId: string | undefined;
         correctOption: number | undefined;

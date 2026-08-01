@@ -20,4 +20,5 @@ export enum MatchEvents {
   PLAYER_DISCONNECTED = 'player:disconnected',
   PLAYER_RECONNECTED = 'player:reconnected',
   MATCH_STATE_SYNC = 'match:state-sync',
+  QUESTION_SKIP = 'question:skip',
 }

@@ -9,6 +9,7 @@ export interface ScoreResult {
 @Injectable()
 export class ScoringService {
   private readonly BASE_POINTS = 1000;
+  private readonly TIMEOUT_PENALTY = -200;
 
   calculateScore(params: {
     isCorrect: boolean;
@@ -31,5 +32,17 @@ export class ScoringService {
     else if (newStreak >= 2) streakBonus = 50;
 
     return { pointsEarned: speedPoints + streakBonus, newStreak, streakBonus };
+  }
+
+  /**
+   * Penalty applied when a player fails to answer within the time limit.
+   * Breaks the streak and deducts points.
+   */
+  calculateTimeoutPenalty(): ScoreResult {
+    return {
+      pointsEarned: this.TIMEOUT_PENALTY,
+      newStreak: 0,
+      streakBonus: 0,
+    };
   }
 }

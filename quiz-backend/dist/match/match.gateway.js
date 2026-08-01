@@ -38,6 +38,7 @@ let MatchGateway = class MatchGateway {
         setTimeout(async () => {
             const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
             this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, firstQuestion);
+            this.scheduleReveal(matchStartedPayload.matchId, data.roomCode, firstQuestion.questionId, firstQuestion.timeLimitMs);
         }, 3000);
     }
     async handleAnswerSubmit(data, client) {
@@ -46,21 +47,37 @@ let MatchGateway = class MatchGateway {
         this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PLAYER_ANSWERED, { playerId });
         const allAnswered = await this.matchService.haveAllPlayersAnswered(data.matchId, data.questionId);
         if (allAnswered) {
-            await this.revealAndAdvance(data.matchId, roomCode);
+            await this.revealAndAdvance(data.matchId, roomCode, data.questionId);
         }
     }
-    async revealAndAdvance(matchId, roomCode) {
+    scheduleReveal(matchId, roomCode, questionId, timeLimitMs) {
+        setTimeout(async () => {
+            const state = await this.matchService.getMatchState(matchId);
+            if (state && state.currentQuestion && state.currentQuestion.questionId === questionId) {
+                await this.revealAndAdvance(matchId, roomCode, questionId);
+            }
+        }, timeLimitMs + 100);
+    }
+    async revealAndAdvance(matchId, roomCode, questionId) {
+        const state = await this.matchService.getMatchState(matchId);
+        if (!state || !state.currentQuestion || state.currentQuestion.questionId !== questionId) {
+            return;
+        }
+        await this.matchService.penalizeUnanswered(matchId);
         const reveal = await this.matchService.revealAnswers(matchId);
         this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_REVEAL, reveal);
         this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.SCOREBOARD_UPDATE, reveal.scores);
-        const next = await this.matchService.pushNextQuestion(matchId);
-        if (next.matchEnded) {
-            this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.MATCH_ENDED, next.finalResults);
-        }
-        else {
-            this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
-            this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, next);
-        }
+        setTimeout(async () => {
+            const next = await this.matchService.pushNextQuestion(matchId);
+            if (next.matchEnded) {
+                this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.MATCH_ENDED, next.finalResults);
+            }
+            else {
+                this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
+                this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, next);
+                this.scheduleReveal(matchId, roomCode, next.questionId, next.timeLimitMs);
+            }
+        }, 4000);
     }
     async handleStateSync(data, client) {
         const state = await this.matchService.getMatchState(data.matchId);
@@ -84,6 +101,9 @@ let MatchGateway = class MatchGateway {
             team: p.team
         }));
         client.emit(match_events_enum_1.MatchEvents.SCOREBOARD_UPDATE, scores);
+    }
+    async handleSkip(data) {
+        await this.revealAndAdvance(data.matchId, data.roomCode, data.questionId);
     }
     handleDisconnect(client) {
         this.matchService.handleDisconnect(client.id);
@@ -132,6 +152,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], MatchGateway.prototype, "handleStateSync", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)(match_events_enum_1.MatchEvents.QUESTION_SKIP),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], MatchGateway.prototype, "handleSkip", null);
 exports.MatchGateway = MatchGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {

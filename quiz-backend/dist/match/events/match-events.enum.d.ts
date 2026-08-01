@@ -16,5 +16,6 @@ export declare enum MatchEvents {
     MATCH_ENDED = "match:ended",
     PLAYER_DISCONNECTED = "player:disconnected",
     PLAYER_RECONNECTED = "player:reconnected",
-    MATCH_STATE_SYNC = "match:state-sync"
+    MATCH_STATE_SYNC = "match:state-sync",
+    QUESTION_SKIP = "question:skip"
 }
