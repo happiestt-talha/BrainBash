@@ -1,8 +1,3 @@
-Now update MatchModule to wire in all the repositories match.service.ts actually needs — this replaces the earlier version:
-
-quiz-backend/src/match/match.module.ts
-
-typescript
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatchGateway } from './match.gateway';
