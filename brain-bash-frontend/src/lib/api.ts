@@ -1,21 +1,29 @@
 import { authStorage } from './auth-storage';
+import toast from 'react-hot-toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = authStorage.getToken();
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (error: any) {
+    toast.error('Unable to connect to the server. Please try again later.');
+    throw new Error('Network error: Unable to connect to the server.');
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
+    toast.error(error.message || 'An error occurred during the request.');
     throw new Error(error.message ?? 'Request failed');
   }
 

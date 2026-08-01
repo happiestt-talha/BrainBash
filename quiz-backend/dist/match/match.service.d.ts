@@ -8,6 +8,7 @@ import { MatchQuestion } from './entities/match-question.entity';
 import { MatchAnswer } from './entities/match-answer.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Question } from '../questions/entities/question.entity';
+import { MatchState } from './interfaces/match-state.interface';
 export declare class MatchService {
     private stateStore;
     private scoringService;
@@ -91,4 +92,5 @@ export declare class MatchService {
     }>;
     private buildFinalResults;
     handleDisconnect(socketId: string): Promise<void>;
+    getMatchState(matchId: string): Promise<MatchState | null>;
 }

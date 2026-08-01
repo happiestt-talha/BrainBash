@@ -3,11 +3,12 @@
 import { Timer } from '../ui/Timer';
 import { AnswerOption } from './AnswerOption';
 import { useMatchStore } from '@/store/matchStore';
-import { useMatchState } from '@/hooks/useMatchState';
+import { useSocket } from '@/hooks/useSocket';
+import { MatchEvents } from '@/lib/constants';
 
 export function QuestionCard() {
-  const { currentQuestion, myAnswer, hasAnswered, lastReveal, matchId } = useMatchStore();
-  const { submitAnswer } = useMatchState();
+  const { currentQuestion, myAnswer, hasAnswered, lastReveal, matchId, submitMyAnswer } = useMatchStore();
+  const socket = useSocket();
 
   if (!currentQuestion) {
     return <div className="text-center text-gray-400">Waiting for next question...</div>;
@@ -17,7 +18,8 @@ export function QuestionCard() {
 
   function handleSelect(index: number) {
     if (hasAnswered || !matchId || !currentQuestion) return;
-    submitAnswer(matchId, currentQuestion.questionId, index);
+    submitMyAnswer(index);
+    socket.emit(MatchEvents.ANSWER_SUBMIT, { matchId, questionId: currentQuestion.questionId, selectedOption: index });
   }
 
   return (

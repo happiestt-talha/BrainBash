@@ -290,6 +290,9 @@ let MatchService = class MatchService {
             await this.stateStore.set(participant.matchId, state);
         }
     }
+    async getMatchState(matchId) {
+        return this.stateStore.get(matchId);
+    }
 };
 exports.MatchService = MatchService;
 exports.MatchService = MatchService = __decorate([

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from './redis/redis.module';
@@ -10,6 +10,8 @@ import { TeamsModule } from './teams/teams.module';
 import { ScoringModule } from './scoring/scoring.module';
 import { QuestionsModule } from './questions/questions.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { LoggerModule } from './logger/logger.module';
+import { LoggerMiddleware } from './logger/logger.middleware';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -32,8 +34,13 @@ import { AppService } from './app.service';
     ScoringModule,
     QuestionsModule,
     LeaderboardModule,
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

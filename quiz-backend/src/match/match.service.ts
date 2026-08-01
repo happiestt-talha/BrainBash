@@ -361,4 +361,8 @@ export class MatchService {
     }
     // per your earlier decision: timer keeps running, match does not pause
   }
+
+  async getMatchState(matchId: string): Promise<MatchState | null> {
+    return this.stateStore.get(matchId);
+  }
 }

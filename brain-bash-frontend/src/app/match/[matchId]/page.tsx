@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMatchState } from '@/hooks/useMatchState';
+import { useMatchState } from '@/store/useMatchState';
 import { useMatchStore } from '@/store/matchStore';
 import { QuestionCard } from '@/components/match/QuestionCard';
 import { LiveScoreboard } from '@/components/match/LiveScoreboard';

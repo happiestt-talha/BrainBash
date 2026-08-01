@@ -24,5 +24,8 @@ export declare class MatchGateway implements OnGatewayDisconnect {
         selectedOption: number;
     }, client: Socket): Promise<void>;
     private revealAndAdvance;
+    handleStateSync(data: {
+        matchId: string;
+    }, client: Socket): Promise<void>;
     handleDisconnect(client: Socket): void;
 }

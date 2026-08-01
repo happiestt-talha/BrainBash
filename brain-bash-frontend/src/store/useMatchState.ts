@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useSocket } from './useSocket';
+import { useParams } from 'next/navigation';
+import { useSocket } from '@/hooks/useSocket';
 import { useMatchStore } from '@/store/matchStore';
 import { MatchEvents } from '@/lib/constants';
-import {
+import type {
   QuestionPushPayload,
   RevealPayload,
   ScoreEntry,
@@ -17,6 +18,7 @@ import {
 // LiveScoreboard, etc.
 export function useMatchState() {
   const socket = useSocket();
+  const params = useParams();
   const {
     setQuestion,
     markPlayerAnswered,
@@ -26,6 +28,10 @@ export function useMatchState() {
   } = useMatchStore();
 
   useEffect(() => {
+    if (params?.matchId) {
+      socket.emit(MatchEvents.MATCH_STATE_SYNC, { matchId: params.matchId });
+    }
+
     function onQuestionPush(payload: QuestionPushPayload) {
       setQuestion(payload);
     }
@@ -55,12 +61,5 @@ export function useMatchState() {
       socket.off(MatchEvents.SCOREBOARD_UPDATE, onScoreboardUpdate);
       socket.off(MatchEvents.MATCH_ENDED, onMatchEnded);
     };
-  }, [socket]);
-
-  function submitAnswer(matchId: string, questionId: string, selectedOption: number) {
-    useMatchStore.getState().submitMyAnswer(selectedOption);
-    socket.emit(MatchEvents.ANSWER_SUBMIT, { matchId, questionId, selectedOption });
-  }
-
-  return { submitAnswer };
+  }, [socket, params?.matchId]);
 }

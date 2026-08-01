@@ -35,8 +35,10 @@ let MatchGateway = class MatchGateway {
     async handleStartMatch(data) {
         const matchStartedPayload = await this.matchService.startMatch(data.roomCode);
         this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.MATCH_STARTED, matchStartedPayload);
-        const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
-        this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, firstQuestion);
+        setTimeout(async () => {
+            const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
+            this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, firstQuestion);
+        }, 3000);
     }
     async handleAnswerSubmit(data, client) {
         const { roomCode, playerId } = await this.matchService.recordAnswer(data, client.id);
@@ -59,6 +61,29 @@ let MatchGateway = class MatchGateway {
             this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
             this.server.to(roomCode).emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, next);
         }
+    }
+    async handleStateSync(data, client) {
+        const state = await this.matchService.getMatchState(data.matchId);
+        if (!state)
+            return;
+        if (state.currentQuestion) {
+            client.emit(match_events_enum_1.MatchEvents.QUESTION_PUSH, {
+                matchEnded: false,
+                questionId: state.currentQuestion.questionId,
+                index: state.currentQuestion.index,
+                text: state.currentQuestion.text,
+                options: state.currentQuestion.options,
+                timeLimitMs: state.currentQuestion.timeLimitMs,
+                serverTimestamp: state.currentQuestion.pushedAt,
+            });
+        }
+        const scores = state.participants.map(p => ({
+            playerId: p.playerId,
+            displayName: p.displayName,
+            totalScore: p.totalScore,
+            team: p.team
+        }));
+        client.emit(match_events_enum_1.MatchEvents.SCOREBOARD_UPDATE, scores);
     }
     handleDisconnect(client) {
         this.matchService.handleDisconnect(client.id);
@@ -99,9 +124,20 @@ __decorate([
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], MatchGateway.prototype, "handleAnswerSubmit", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)(match_events_enum_1.MatchEvents.MATCH_STATE_SYNC),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], MatchGateway.prototype, "handleStateSync", null);
 exports.MatchGateway = MatchGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
-        cors: { origin: process.env.FRONTEND_URL, credentials: true },
+        cors: {
+            origin: ["http://localhost:3000", process.env.FRONTEND_URL],
+            credentials: true,
+        },
     }),
     __metadata("design:paramtypes", [match_service_1.MatchService])
 ], MatchGateway);

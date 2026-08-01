@@ -19,9 +19,14 @@ const teams_module_1 = require("./teams/teams.module");
 const scoring_module_1 = require("./scoring/scoring.module");
 const questions_module_1 = require("./questions/questions.module");
 const leaderboard_module_1 = require("./leaderboard/leaderboard.module");
+const logger_module_1 = require("./logger/logger.module");
+const logger_middleware_1 = require("./logger/logger.middleware");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 let AppModule = class AppModule {
+    configure(consumer) {
+        consumer.apply(logger_middleware_1.LoggerMiddleware).forRoutes('*');
+    }
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
@@ -43,6 +48,7 @@ exports.AppModule = AppModule = __decorate([
             scoring_module_1.ScoringModule,
             questions_module_1.QuestionsModule,
             leaderboard_module_1.LeaderboardModule,
+            logger_module_1.LoggerModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

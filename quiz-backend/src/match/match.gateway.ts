@@ -11,7 +11,10 @@ import { MatchEvents } from './events/match-events.enum';
 import { MatchService } from './match.service';
 
 @WebSocketGateway({
-  cors: { origin: process.env.FRONTEND_URL, credentials: true },
+  cors: {
+    origin: ["http://localhost:3000", process.env.FRONTEND_URL],
+    credentials: true,
+  },
 })
 export class MatchGateway implements OnGatewayDisconnect {
   @WebSocketServer()
@@ -45,8 +48,10 @@ export class MatchGateway implements OnGatewayDisconnect {
     const matchStartedPayload = await this.matchService.startMatch(data.roomCode);
     this.server.to(data.roomCode).emit(MatchEvents.MATCH_STARTED, matchStartedPayload);
 
-    const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
-    this.server.to(data.roomCode).emit(MatchEvents.QUESTION_PUSH, firstQuestion);
+    setTimeout(async () => {
+      const firstQuestion = await this.matchService.pushNextQuestion(matchStartedPayload.matchId);
+      this.server.to(data.roomCode).emit(MatchEvents.QUESTION_PUSH, firstQuestion);
+    }, 3000);
   }
 
   @SubscribeMessage(MatchEvents.ANSWER_SUBMIT)
@@ -78,6 +83,32 @@ export class MatchGateway implements OnGatewayDisconnect {
       this.server.to(roomCode).emit(MatchEvents.MATCH_NEXT_QUESTION, { index: next.index });
       this.server.to(roomCode).emit(MatchEvents.QUESTION_PUSH, next);
     }
+  }
+
+  @SubscribeMessage(MatchEvents.MATCH_STATE_SYNC)
+  async handleStateSync(@MessageBody() data: { matchId: string }, @ConnectedSocket() client: Socket) {
+    const state = await this.matchService.getMatchState(data.matchId);
+    if (!state) return;
+
+    if (state.currentQuestion) {
+      client.emit(MatchEvents.QUESTION_PUSH, {
+        matchEnded: false,
+        questionId: state.currentQuestion.questionId,
+        index: state.currentQuestion.index,
+        text: state.currentQuestion.text,
+        options: state.currentQuestion.options,
+        timeLimitMs: state.currentQuestion.timeLimitMs,
+        serverTimestamp: state.currentQuestion.pushedAt,
+      });
+    }
+
+    const scores = state.participants.map(p => ({
+      playerId: p.playerId,
+      displayName: p.displayName,
+      totalScore: p.totalScore,
+      team: p.team
+    }));
+    client.emit(MatchEvents.SCOREBOARD_UPDATE, scores);
   }
 
   handleDisconnect(client: Socket) {
