@@ -10,6 +10,11 @@ export declare class MatchGateway implements OnGatewayDisconnect {
         playerName: string;
         userId?: string;
     }, client: Socket): Promise<void>;
+    handleAssignTeam(data: {
+        roomCode: string;
+        playerId: string;
+        team: 'A' | 'B';
+    }): Promise<void>;
     handleStartMatch(data: {
         roomCode: string;
     }): Promise<void>;

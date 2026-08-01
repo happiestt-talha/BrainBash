@@ -21,6 +21,9 @@ let QuestionsController = class QuestionsController {
     constructor(questionsService) {
         this.questionsService = questionsService;
     }
+    getCategories() {
+        return this.questionsService.getCategories();
+    }
     getByCategory(categoryId) {
         return this.questionsService.getByCategory(categoryId);
     }
@@ -29,6 +32,12 @@ let QuestionsController = class QuestionsController {
     }
 };
 exports.QuestionsController = QuestionsController;
+__decorate([
+    (0, common_1.Get)('categories'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], QuestionsController.prototype, "getCategories", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('categoryId')),

@@ -32,6 +32,14 @@ export class MatchGateway implements OnGatewayDisconnect {
     this.server.to(data.roomCode).emit(MatchEvents.ROOM_PLAYER_JOINED, result);
   }
 
+  @SubscribeMessage(MatchEvents.ROOM_ASSIGN_TEAM)
+  async handleAssignTeam(
+    @MessageBody() data: { roomCode: string; playerId: string; team: 'A' | 'B' },
+  ) {
+    await this.matchService.assignTeam(data);
+    this.server.to(data.roomCode).emit(MatchEvents.ROOM_TEAM_ASSIGNED, { playerId: data.playerId, team: data.team });
+  }
+
   @SubscribeMessage(MatchEvents.ROOM_START_MATCH)
   async handleStartMatch(@MessageBody() data: { roomCode: string }) {
     const matchStartedPayload = await this.matchService.startMatch(data.roomCode);

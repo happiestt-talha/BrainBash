@@ -14,6 +14,10 @@ export class QuestionsService {
     private llmGenerator: LlmQuestionGeneratorService,
   ) {}
 
+  async getCategories(): Promise<Category[]> {
+    return this.categoryRepo.find({ order: { name: 'ASC' } });
+  }
+
   async getByCategory(categoryId: string, limit = 50): Promise<Question[]> {
     return this.questionRepo.find({
       where: { categoryId, validated: true },

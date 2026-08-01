@@ -6,6 +6,11 @@ import { GenerateQuestionsDto } from './dto/generate-questions.dto';
 export class QuestionsController {
   constructor(private questionsService: QuestionsService) {}
 
+  @Get('categories')
+  getCategories() {
+    return this.questionsService.getCategories();
+  }
+
   @Get()
   getByCategory(@Query('categoryId') categoryId: string) {
     return this.questionsService.getByCategory(categoryId);

@@ -1,23 +1,24 @@
 import { Repository } from 'typeorm';
 import { MatchStateStore } from './match-state.store';
 import { ScoringService } from '../scoring/scoring.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { Match } from './entities/match.entity';
 import { MatchParticipant } from './entities/match-participant.entity';
 import { MatchQuestion } from './entities/match-question.entity';
 import { MatchAnswer } from './entities/match-answer.entity';
 import { Room } from '../rooms/entities/room.entity';
 import { Question } from '../questions/entities/question.entity';
-import { MatchParticipantState } from './interfaces/match-state.interface';
 export declare class MatchService {
     private stateStore;
     private scoringService;
+    private leaderboardService;
     private matchRepo;
     private participantRepo;
     private matchQuestionRepo;
     private matchAnswerRepo;
     private roomRepo;
     private questionRepo;
-    constructor(stateStore: MatchStateStore, scoringService: ScoringService, matchRepo: Repository<Match>, participantRepo: Repository<MatchParticipant>, matchQuestionRepo: Repository<MatchQuestion>, matchAnswerRepo: Repository<MatchAnswer>, roomRepo: Repository<Room>, questionRepo: Repository<Question>);
+    constructor(stateStore: MatchStateStore, scoringService: ScoringService, leaderboardService: LeaderboardService, matchRepo: Repository<Match>, participantRepo: Repository<MatchParticipant>, matchQuestionRepo: Repository<MatchQuestion>, matchAnswerRepo: Repository<MatchAnswer>, roomRepo: Repository<Room>, questionRepo: Repository<Question>);
     joinRoom(data: {
         roomCode: string;
         playerName: string;
@@ -25,6 +26,11 @@ export declare class MatchService {
     }, socketId: string): Promise<{
         players: any[];
     }>;
+    assignTeam(data: {
+        roomCode: string;
+        playerId: string;
+        team: 'A' | 'B';
+    }): Promise<any[]>;
     startMatch(roomCode: string): Promise<{
         matchId: string;
         totalQuestions: number;
@@ -33,7 +39,12 @@ export declare class MatchService {
     pushNextQuestion(matchId: string): Promise<{
         matchEnded: boolean;
         finalResults: {
-            finalScores: MatchParticipantState[];
+            finalScores: {
+                playerId: string;
+                displayName: string;
+                totalScore: number;
+                team: "A" | "B" | null;
+            }[];
             winnerId: string;
         } | null;
         questionId?: undefined;
@@ -73,6 +84,7 @@ export declare class MatchService {
         }[];
         scores: {
             playerId: string;
+            displayName: string;
             totalScore: number;
             team: "A" | "B" | null;
         }[];

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MatchStateStore } from './match-state.store';
 import { ScoringService } from '../scoring/scoring.service';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { Match } from './entities/match.entity';
 import { MatchParticipant } from './entities/match-participant.entity';
 import { MatchQuestion } from './entities/match-question.entity';
@@ -19,6 +20,7 @@ export class MatchService {
   constructor(
     private stateStore: MatchStateStore,
     private scoringService: ScoringService,
+    private leaderboardService: LeaderboardService,
     @InjectRepository(Match) private matchRepo: Repository<Match>,
     @InjectRepository(MatchParticipant) private participantRepo: Repository<MatchParticipant>,
     @InjectRepository(MatchQuestion) private matchQuestionRepo: Repository<MatchQuestion>,
@@ -43,16 +45,40 @@ export class MatchService {
     const lobbyKey = `room:${data.roomCode}:lobby`;
     const existing = (await this.stateStore['redis'].getJson<any[]>(lobbyKey)) ?? [];
 
-    const newPlayer = {
-      socketId,
-      playerName: data.playerName,
-      userId: data.userId ?? null,
-      team: null as 'A' | 'B' | null,
-    };
-    existing.push(newPlayer);
+    let player = existing.find(
+      (p) =>
+        (data.userId && p.userId === data.userId) || (!data.userId && p.playerName === data.playerName),
+    );
+
+    if (player) {
+      player.socketId = socketId;
+    } else {
+      player = {
+        socketId,
+        playerName: data.playerName,
+        userId: data.userId ?? null,
+        team: null as 'A' | 'B' | null,
+        isHost: existing.length === 0,
+      };
+      existing.push(player);
+    }
+
     await this.stateStore['redis'].setJson(lobbyKey, existing, 60 * 60 * 2);
 
     return { players: existing };
+  }
+
+  async assignTeam(data: { roomCode: string; playerId: string; team: 'A' | 'B' }) {
+    const lobbyKey = `room:${data.roomCode}:lobby`;
+    const existing = (await this.stateStore['redis'].getJson<any[]>(lobbyKey)) ?? [];
+
+    const player = existing.find((p) => p.socketId === data.playerId);
+    if (player) {
+      player.team = data.team;
+      await this.stateStore['redis'].setJson(lobbyKey, existing, 60 * 60 * 2);
+    }
+
+    return existing;
   }
 
   // ---- MATCH START ----
@@ -284,6 +310,7 @@ export class MatchService {
 
     const scores = state.participants.map((p) => ({
       playerId: p.playerId,
+      displayName: p.displayName,
       totalScore: p.totalScore,
       team: p.team,
     }));
@@ -300,8 +327,16 @@ export class MatchService {
     const state = await this.stateStore.get(matchId);
     if (!state) return null;
 
-    const sorted = [...state.participants].sort((a, b) => b.totalScore - a.totalScore);
+    const sorted = [...state.participants]
+      .sort((a, b) => b.totalScore - a.totalScore)
+      .map((p) => ({
+        playerId: p.playerId,
+        displayName: p.displayName,
+        totalScore: p.totalScore,
+        team: p.team,
+      }));
     await this.matchRepo.update(matchId, { status: 'completed', endedAt: new Date() });
+    await this.leaderboardService.recordMatchResults(matchId);
 
     return {
       finalScores: sorted,

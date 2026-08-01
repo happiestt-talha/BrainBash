@@ -28,6 +28,10 @@ let MatchGateway = class MatchGateway {
         client.join(data.roomCode);
         this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.ROOM_PLAYER_JOINED, result);
     }
+    async handleAssignTeam(data) {
+        await this.matchService.assignTeam(data);
+        this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.ROOM_TEAM_ASSIGNED, { playerId: data.playerId, team: data.team });
+    }
     async handleStartMatch(data) {
         const matchStartedPayload = await this.matchService.startMatch(data.roomCode);
         this.server.to(data.roomCode).emit(match_events_enum_1.MatchEvents.MATCH_STARTED, matchStartedPayload);
@@ -73,6 +77,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", Promise)
 ], MatchGateway.prototype, "handleRoomJoin", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)(match_events_enum_1.MatchEvents.ROOM_ASSIGN_TEAM),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], MatchGateway.prototype, "handleAssignTeam", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)(match_events_enum_1.MatchEvents.ROOM_START_MATCH),
     __param(0, (0, websockets_1.MessageBody)()),

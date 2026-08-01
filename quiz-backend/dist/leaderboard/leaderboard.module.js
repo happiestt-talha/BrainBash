@@ -8,10 +8,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LeaderboardModule = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const leaderboard_entry_entity_1 = require("./entities/leaderboard-entry.entity");
+const match_participant_entity_1 = require("../match/entities/match-participant.entity");
+const leaderboard_service_1 = require("./leaderboard.service");
+const leaderboard_controller_1 = require("./leaderboard.controller");
 let LeaderboardModule = class LeaderboardModule {
 };
 exports.LeaderboardModule = LeaderboardModule;
 exports.LeaderboardModule = LeaderboardModule = __decorate([
-    (0, common_1.Module)({})
+    (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([leaderboard_entry_entity_1.LeaderboardEntry, match_participant_entity_1.MatchParticipant])],
+        providers: [leaderboard_service_1.LeaderboardService],
+        controllers: [leaderboard_controller_1.LeaderboardController],
+        exports: [leaderboard_service_1.LeaderboardService],
+    })
 ], LeaderboardModule);
 //# sourceMappingURL=leaderboard.module.js.map

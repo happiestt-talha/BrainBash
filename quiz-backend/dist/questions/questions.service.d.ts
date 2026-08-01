@@ -8,6 +8,7 @@ export declare class QuestionsService {
     private categoryRepo;
     private llmGenerator;
     constructor(questionRepo: Repository<Question>, categoryRepo: Repository<Category>, llmGenerator: LlmQuestionGeneratorService);
+    getCategories(): Promise<Category[]>;
     getByCategory(categoryId: string, limit?: number): Promise<Question[]>;
     generateAndStore(dto: GenerateQuestionsDto): Promise<Question[]>;
 }

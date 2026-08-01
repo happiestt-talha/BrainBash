@@ -13,6 +13,7 @@ const match_gateway_1 = require("./match.gateway");
 const match_service_1 = require("./match.service");
 const match_state_store_1 = require("./match-state.store");
 const scoring_module_1 = require("../scoring/scoring.module");
+const leaderboard_module_1 = require("../leaderboard/leaderboard.module");
 const match_entity_1 = require("./entities/match.entity");
 const match_participant_entity_1 = require("./entities/match-participant.entity");
 const match_question_entity_1 = require("./entities/match-question.entity");
@@ -27,6 +28,7 @@ exports.MatchModule = MatchModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forFeature([match_entity_1.Match, match_participant_entity_1.MatchParticipant, match_question_entity_1.MatchQuestion, match_answer_entity_1.MatchAnswer, room_entity_1.Room, question_entity_1.Question]),
             scoring_module_1.ScoringModule,
+            leaderboard_module_1.LeaderboardModule,
         ],
         providers: [match_gateway_1.MatchGateway, match_service_1.MatchService, match_state_store_1.MatchStateStore],
     })

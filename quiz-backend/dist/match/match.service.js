@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const match_state_store_1 = require("./match-state.store");
 const scoring_service_1 = require("../scoring/scoring.service");
+const leaderboard_service_1 = require("../leaderboard/leaderboard.service");
 const match_entity_1 = require("./entities/match.entity");
 const match_participant_entity_1 = require("./entities/match-participant.entity");
 const match_question_entity_1 = require("./entities/match-question.entity");
@@ -29,15 +30,17 @@ const QUESTIONS_PER_MATCH = 10;
 let MatchService = class MatchService {
     stateStore;
     scoringService;
+    leaderboardService;
     matchRepo;
     participantRepo;
     matchQuestionRepo;
     matchAnswerRepo;
     roomRepo;
     questionRepo;
-    constructor(stateStore, scoringService, matchRepo, participantRepo, matchQuestionRepo, matchAnswerRepo, roomRepo, questionRepo) {
+    constructor(stateStore, scoringService, leaderboardService, matchRepo, participantRepo, matchQuestionRepo, matchAnswerRepo, roomRepo, questionRepo) {
         this.stateStore = stateStore;
         this.scoringService = scoringService;
+        this.leaderboardService = leaderboardService;
         this.matchRepo = matchRepo;
         this.participantRepo = participantRepo;
         this.matchQuestionRepo = matchQuestionRepo;
@@ -51,15 +54,32 @@ let MatchService = class MatchService {
             throw new common_1.NotFoundException('Room not found');
         const lobbyKey = `room:${data.roomCode}:lobby`;
         const existing = (await this.stateStore['redis'].getJson(lobbyKey)) ?? [];
-        const newPlayer = {
-            socketId,
-            playerName: data.playerName,
-            userId: data.userId ?? null,
-            team: null,
-        };
-        existing.push(newPlayer);
+        let player = existing.find((p) => (data.userId && p.userId === data.userId) || (!data.userId && p.playerName === data.playerName));
+        if (player) {
+            player.socketId = socketId;
+        }
+        else {
+            player = {
+                socketId,
+                playerName: data.playerName,
+                userId: data.userId ?? null,
+                team: null,
+                isHost: existing.length === 0,
+            };
+            existing.push(player);
+        }
         await this.stateStore['redis'].setJson(lobbyKey, existing, 60 * 60 * 2);
         return { players: existing };
+    }
+    async assignTeam(data) {
+        const lobbyKey = `room:${data.roomCode}:lobby`;
+        const existing = (await this.stateStore['redis'].getJson(lobbyKey)) ?? [];
+        const player = existing.find((p) => p.socketId === data.playerId);
+        if (player) {
+            player.team = data.team;
+            await this.stateStore['redis'].setJson(lobbyKey, existing, 60 * 60 * 2);
+        }
+        return existing;
     }
     async startMatch(roomCode) {
         const room = await this.roomRepo.findOne({ where: { code: roomCode.toUpperCase() } });
@@ -226,6 +246,7 @@ let MatchService = class MatchService {
         }));
         const scores = state.participants.map((p) => ({
             playerId: p.playerId,
+            displayName: p.displayName,
             totalScore: p.totalScore,
             team: p.team,
         }));
@@ -240,8 +261,16 @@ let MatchService = class MatchService {
         const state = await this.stateStore.get(matchId);
         if (!state)
             return null;
-        const sorted = [...state.participants].sort((a, b) => b.totalScore - a.totalScore);
+        const sorted = [...state.participants]
+            .sort((a, b) => b.totalScore - a.totalScore)
+            .map((p) => ({
+            playerId: p.playerId,
+            displayName: p.displayName,
+            totalScore: p.totalScore,
+            team: p.team,
+        }));
         await this.matchRepo.update(matchId, { status: 'completed', endedAt: new Date() });
+        await this.leaderboardService.recordMatchResults(matchId);
         return {
             finalScores: sorted,
             winnerId: sorted[0]?.playerId ?? null,
@@ -265,14 +294,15 @@ let MatchService = class MatchService {
 exports.MatchService = MatchService;
 exports.MatchService = MatchService = __decorate([
     (0, common_1.Injectable)(),
-    __param(2, (0, typeorm_1.InjectRepository)(match_entity_1.Match)),
-    __param(3, (0, typeorm_1.InjectRepository)(match_participant_entity_1.MatchParticipant)),
-    __param(4, (0, typeorm_1.InjectRepository)(match_question_entity_1.MatchQuestion)),
-    __param(5, (0, typeorm_1.InjectRepository)(match_answer_entity_1.MatchAnswer)),
-    __param(6, (0, typeorm_1.InjectRepository)(room_entity_1.Room)),
-    __param(7, (0, typeorm_1.InjectRepository)(question_entity_1.Question)),
+    __param(3, (0, typeorm_1.InjectRepository)(match_entity_1.Match)),
+    __param(4, (0, typeorm_1.InjectRepository)(match_participant_entity_1.MatchParticipant)),
+    __param(5, (0, typeorm_1.InjectRepository)(match_question_entity_1.MatchQuestion)),
+    __param(6, (0, typeorm_1.InjectRepository)(match_answer_entity_1.MatchAnswer)),
+    __param(7, (0, typeorm_1.InjectRepository)(room_entity_1.Room)),
+    __param(8, (0, typeorm_1.InjectRepository)(question_entity_1.Question)),
     __metadata("design:paramtypes", [match_state_store_1.MatchStateStore,
         scoring_service_1.ScoringService,
+        leaderboard_service_1.LeaderboardService,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

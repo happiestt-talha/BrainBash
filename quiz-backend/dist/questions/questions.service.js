@@ -28,6 +28,9 @@ let QuestionsService = class QuestionsService {
         this.categoryRepo = categoryRepo;
         this.llmGenerator = llmGenerator;
     }
+    async getCategories() {
+        return this.categoryRepo.find({ order: { name: 'ASC' } });
+    }
     async getByCategory(categoryId, limit = 50) {
         return this.questionRepo.find({
             where: { categoryId, validated: true },
