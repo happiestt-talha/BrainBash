@@ -1,7 +1,0 @@
-feat: implement authentication, leaderboard, and initial frontend
-
-- Introduce `brain-bash-frontend` application for the user interface.
-- Add complete authentication module in the backend, including JWT strategies, guards, and controllers.
-- Implement leaderboard functionality with services and entities for tracking player scores.
-- Add database seeding capabilities for initial data setup.
-- Update match and questions modules to integrate with the new auth and leaderboard systems.
